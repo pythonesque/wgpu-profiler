@@ -67,7 +67,9 @@ async fn run(event_loop: EventLoop<()>, window: Window) {
         push_constant_ranges: &[],
     });
 
-    let swapchain_format = adapter.get_swap_chain_preferred_format(&surface).expect("Surface not compatible with this adapter!");
+    let swapchain_format = adapter
+        .get_swap_chain_preferred_format(&surface)
+        .expect("Surface not compatible with this adapter!");
 
     let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: None,

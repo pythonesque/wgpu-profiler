@@ -196,14 +196,10 @@ impl GpuProfiler {
             return None;
         }
 
-        let frame = self.pending_frames.remove(0);
+        let mut frame = self.pending_frames.remove(0);
 
         let results = {
-            let resolved_query_buffers: Vec<wgpu::BufferView> = frame
-                .query_pools
-                .iter()
-                .map(|pool| pool.resolved_buffer_slice().get_mapped_range())
-                .collect();
+            let resolved_query_buffers: Vec<wgpu::BufferSliceMut> = frame.query_pools.iter_mut().map(|pool| pool.resolved_buffer_slice()).collect();
             Self::process_timings_recursive(self.timestamp_to_sec, &resolved_query_buffers, frame.closed_scopes)
         };
 
@@ -275,7 +271,7 @@ impl GpuProfiler {
 
     fn process_timings_recursive(
         timestamp_to_sec: f64,
-        resolved_query_buffers: &Vec<wgpu::BufferView>,
+        resolved_query_buffers: &Vec<wgpu::BufferSliceMut>,
         unprocessed_scopes: Vec<UnprocessedTimerScope>,
     ) -> Vec<GpuTimerScopeResult> {
         unprocessed_scopes
@@ -288,7 +284,7 @@ impl GpuProfiler {
                 };
 
                 // By design timestamps for start/end are consecutive.
-                let buffer = &resolved_query_buffers[scope.start_query.pool_idx as usize];
+                let buffer = resolved_query_buffers[scope.start_query.pool_idx as usize].get_mapped_range();
                 let offset = (scope.start_query.query_idx * QUERY_SIZE) as usize;
                 let start_raw = u64::from_le_bytes(buffer[offset..(offset + std::mem::size_of::<u64>())].try_into().unwrap());
                 let end_raw = u64::from_le_bytes(
@@ -362,8 +358,8 @@ impl QueryPool {
         self.buffer.unmap();
     }
 
-    fn resolved_buffer_slice(&self) -> wgpu::BufferSlice {
-        self.buffer.slice(0..(self.num_resolved_queries * QUERY_SIZE) as u64)
+    fn resolved_buffer_slice(&mut self) -> wgpu::BufferSliceMut {
+        self.buffer.slice_mut(0..(self.num_resolved_queries * QUERY_SIZE) as u64)
     }
 }
 
